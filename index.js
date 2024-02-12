@@ -4,7 +4,9 @@ const morgan = require('morgan')
 const cors = require('cors')
 app.use(express.json())
 app.use(morgan('dev'))
+app.use(express.static('C:\\Users\\satum\\teht3\\dist'))
 app.use(cors())
+
 
 
 let notes = [
