@@ -1,13 +1,13 @@
 const express = require('express')
 const app = express()
-const morgan = require('morgan')
-const cors = require('cors')
 app.use(express.json())
+app.use(express.static('dist'))
+
+const morgan = require('morgan')
 app.use(morgan('dev'))
-app.use(express.static('C:\\Users\\satum\\teht3\\dist'))
+
+const cors = require('cors')
 app.use(cors())
-
-
 
 let notes = [
     {
