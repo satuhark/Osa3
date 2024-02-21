@@ -1,94 +1,107 @@
+const mongoose = require('mongoose')
+require('dotenv').config()
 const express = require('express')
 const app = express()
-app.use(express.json())
-app.use(express.static('dist'))
 
+app.use(express.static('dist'))
+app.use(express.json())
 const morgan = require('morgan')
 app.use(morgan('dev'))
 
 const cors = require('cors')
 app.use(cors())
 
-let notes = [
-    {
-      id: 1,
-      name: "Arto Hellas",
-      number: "040-123456"
-    },
-    {
-        id: 2,
-        name: "Ada Lovelace",
-        number: "39-44-5323523"
-    },
-    {
-        id: 3,
-        name: "Dan Abramov",
-        number: "12-43-234345"
-    },
-    {
-        id: 4,
-        name: "Mary Poppendick",
-        number: "39-23-6423122"
-    }
-  ]
+const Note = require('./models/note')
 
 
-  app.get('/', (request, response) => {
-    response.send('')
+  app.get('/', (req, res) => {
+    res.send('')
   })
   
-  app.get('/api/persons', (request, response) => {
-    const formattedJSON = JSON.stringify(notes, null, 2)
-    response.header('Content-Type', 'application/json')
-    response.send(formattedJSON)
-  })
-
-  app.get('/info', (request, response) => {
-    const numberOfPeople = notes.length
-    const currentTime = new Date().toString()
-    const infoMessage = `Phonebook has info for ${numberOfPeople} people. <br> ${currentTime}`
-    response.send(infoMessage)
-  })
-
-  app.get('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    const person = notes.find((note) => note.id === id)
-    if (person) {
-        const formattedJSON = JSON.stringify(person, null, 2)
-        response.header('Content-Type', 'application/json')
-        response.send(formattedJSON)
-      } else {
-        response.status(404).end()      
-    }})
-    
-  app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    notes = notes.filter(note => note.id !== id)
-    response.status(204).end()
+  app.get('/api/persons', (req, res, next) => {
+    Note.find({}).then((notes) => {
+      res.json(notes)
     })
+    .catch(error => next(error))
+  })
 
-  app.post('/api/persons', (request, response) => {
+  app.get('/info', (req, res, next) => {
+    Note.find({}).then((notes) => {
+      const numberOfPeople = notes.length
+      const currentTime = new Date().toString()
+      const infoMessage = `Phonebook has info for ${numberOfPeople} people. <br> ${currentTime}`
+      res.json({ infoMessage })
+    })
+    .catch(error => next(error))
+  })
+
+  app.get('/api/persons/:id', (req, res, next) => {
+    Note.findById(req.params.id).then(note => {
+      if (note) {
+        res.json(note)
+      } else {
+        res.status(404).end()
+      }
+    })
+    .catch(error => next(error))
+  })
+    
+  app.delete('/api/persons/:id', (request, response, next) => {
+    Note.findByIdAndDelete(request.params.id)
+    .then(() => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
+})
+
+  app.options('/api/persons', cors())
+
+  app.post('/api/persons', async (request, response, next) => {
+    try {
     const { name, number } = request.body
-    const nameExists = notes.some((note) => note.name === name)
-    const numberExists = notes.some((note) => note.number === number)
+    const nameExists = await Note.exists({ name: name })
+    const numberExists = await Note.exists({ number: number })
     
     if (nameExists) {
         response.status(400).json({ error: 'Name must be unique' })
+        return
     }
 
     if (numberExists) {
         response.status(400).json({ error: 'Number must be unique' })
+        return
     }
        
-    const id = (Math.floor(Math.random() * 100) + 1).toString()
-    const note = { ...request.body, id }
-    console.log(note)
-    notes.push(note)
-    response.json(note)
-    })
+    const newNote = new Note({ name: name, number: number })
+    await newNote.save()
+    .then(() => {
+      response.status(201).json(newNote)
+  })
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message });
+  } else {
+    console.error('Error handling POST request:', error);
+    response.status(500).json({ error: 'Internal Server Error' })
+  }
+}})
+
+const errorHandler = (error, req, res, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return res.status(400).send({ error: 'malformatted id' })
+  }
+
+  next(error)
+}
+
+app.use(errorHandler)
+
+const url = process.env.MONGODB_URI
+mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true })
   
-  const PORT = process.env.PORT || 3001
+  const PORT = process.env.PORT
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
   })
-
