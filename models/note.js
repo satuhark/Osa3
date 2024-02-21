@@ -3,7 +3,7 @@ const mongoose = require('mongoose')
 mongoose.set('strictQuery', false)
 
 const url = process.env.MONGODB_URI
-mongoose.connect(urlurl, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true })
 
   .then(result => {
     console.log('connected to MongoDB')
