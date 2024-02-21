@@ -97,11 +97,17 @@ const errorHandler = (error, req, res, next) => {
 }
 
 app.use(errorHandler)
-
-const url = process.env.MONGODB_URI
-mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true })
   
   const PORT = process.env.PORT
+  
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
+    const url = process.env.MONGODB_URI
+    mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(result => {
+      console.log('Connected to MongoDB');
+    })
+    .catch((error) => {
+      console.log('Error connecting to MongoDB:', error.message);
+    })
   })
